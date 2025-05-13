@@ -210,13 +210,13 @@ const BookingStats: React.FC<BookingStatsProps> = ({ bookings }) => {
   const totalDays = stats.reduce((sum, user) => sum + user.days, 0);
   
   return (
-    <div className="mb-8 p-4 bg-gray-50 rounded-lg shadow-sm">
+    <div className="mb-8 p-4 bg-gray-50 text-black rounded-lg shadow-sm">
       <div className="flex items-center mb-3">
         <BarChart2 className="mr-2 text-blue-600" size={20} />
-        <h3 className="text-lg font-semibold">Booking Statistics</h3>
+        <h3 className="text-lg  font-semibold">Booking Statistics</h3>
       </div>
       
-      <div className="space-y-3">
+      <div className="space-y-3 text-black">
         {stats.map(user => (
           <div key={user.userId} className="flex flex-col">
             <div className="flex items-center justify-between">
@@ -319,7 +319,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onClose, onSave, existingBook
   };
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex text-black items-center justify-center bg-black bg-opacity-50">
       <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium">New Booking</h3>
