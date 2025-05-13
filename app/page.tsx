@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, PlusCircle, X, Calendar, Clock, BarChart2 } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
 // Define TypeScript interfaces for our data structures
 interface User {
@@ -35,6 +36,12 @@ interface Stats {
   days: number;
 }
 
+// Initialize Supabase client
+// In a real application, you would store these credentials in environment variables
+const supabaseUrl = 'https://uehvebyvpawxkaozlutg.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlaHZlYnl2cGF3eGthb3psdXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzk0MjMsImV4cCI6MjA2MjcxNTQyM30.6BxEdWOpgLWeLpusMqctds84jCJGMelDJM1gcBFiYeY';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // Mock images - in a real app, you'd import actual images
 const BOAT_IMAGE = "/boat.JPG";
 const FAMILY_IMAGE = "/family.JPG";
@@ -43,7 +50,7 @@ const FAMILY_IMAGE = "/family.JPG";
 const USERS: User[] = [
   { id: 1, name: "Nabil Zahlan", color: "#FF5733" },
   { id: 2, name: "Kamal Zahlan", color: "#33A1FF" },
-  { id: 3, name: "Mira Mouawad", color: "#AD33FF" }
+  { id: 3, name: "Mira Mouawad", color: "#AD33FF" },
 ];
 
 // Props interface for confirmation dialog
@@ -100,7 +107,7 @@ const PasswordScreen: React.FC<PasswordScreenProps> = ({ onPasswordSuccess }) =>
   
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
-    if (password === "mamamia") {
+    if (password === "96@Pasteur") {
       onPasswordSuccess();
     } else {
       setError(true);
@@ -199,7 +206,7 @@ const BookingStats: React.FC<BookingStatsProps> = ({ bookings }) => {
       const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       
       if (stats[booking.userId]) {
-        stats[booking.userId].days += days;
+        stats[booking.userId].days += days +1;
       }
     });
     
@@ -213,7 +220,7 @@ const BookingStats: React.FC<BookingStatsProps> = ({ bookings }) => {
     <div className="mb-8 p-4 bg-gray-50 text-black rounded-lg shadow-sm">
       <div className="flex items-center mb-3">
         <BarChart2 className="mr-2 text-blue-600" size={20} />
-        <h3 className="text-lg  font-semibold">Booking Statistics</h3>
+        <h3 className="text-lg font-semibold">Booking Statistics</h3>
       </div>
       
       <div className="space-y-3 text-black">
@@ -260,8 +267,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ onClose, onSave, existingBook
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   
-  const handleSubmit = (): void => {
+  const handleSubmit = async (): Promise<void> => {
     // Validate form
     if (!userId || !startDate || !endDate) {
       setError("Please fill out all fields");
@@ -302,6 +310,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ onClose, onSave, existingBook
       return;
     }
     
+    setIsSubmitting(true);
+    
     // Create booking object - using user name as the title
     const newBooking: Booking = {
       id: Date.now().toString(),
@@ -313,9 +323,17 @@ const BookingForm: React.FC<BookingFormProps> = ({ onClose, onSave, existingBook
       color: user.color
     };
     
-    // Save booking
-    onSave(newBooking);
-    onClose();
+    // Save booking to Supabase
+    try {
+      // Save booking
+      onSave(newBooking);
+      onClose();
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      setError("Failed to create booking. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -326,6 +344,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onClose, onSave, existingBook
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
+            disabled={isSubmitting}
           >
             <X size={20} />
           </button>
@@ -341,6 +360,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onClose, onSave, existingBook
                 className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={userId}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setUserId(e.target.value)}
+                disabled={isSubmitting}
               >
                 <option value="">Select a family member</option>
                 {USERS.map(user => (
@@ -377,15 +397,25 @@ const BookingForm: React.FC<BookingFormProps> = ({ onClose, onSave, existingBook
               type="button"
               className="px-4 py-2 mr-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="button"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center"
               onClick={handleSubmit}
+              disabled={isSubmitting}
             >
-              Book Now
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : "Book Now"}
             </button>
           </div>
         </div>
@@ -406,6 +436,7 @@ interface CalendarEventProps {
 // Simple Calendar Event component - Improved to always show name
 const CalendarEvent: React.FC<CalendarEventProps> = ({ event, day, isFirstDay, isLastDay, onDelete }) => {
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Determine styles based on position in multi-day booking
   const borderRadius = (() => {
@@ -420,9 +451,16 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({ event, day, isFirstDay, i
     setShowConfirmation(true);
   };
 
-  const confirmDelete = (): void => {
-    onDelete(event.id);
-    setShowConfirmation(false);
+  const confirmDelete = async (): Promise<void> => {
+    setIsDeleting(true);
+    try {
+      await onDelete(event.id);
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+    } finally {
+      setIsDeleting(false);
+      setShowConfirmation(false);
+    }
   };
 
   return (
@@ -448,8 +486,9 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({ event, day, isFirstDay, i
         <button 
           onClick={handleDelete}
           className="ml-1 hover:bg-red-800 rounded-full p-1 text-white text-xs"
+          disabled={isDeleting}
         >
-          ✕
+          {isDeleting ? "..." : "✕"}
         </button>
       </div>
       
@@ -626,45 +665,131 @@ const SimpleCalendar: React.FC<SimpleCalendarProps> = ({ bookings, onDeleteBooki
 const BoatBookingApp: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showBookingForm, setShowBookingForm] = useState<boolean>(false);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<any>(null);
   
-  // Load bookings from localStorage on component mount
+  // Load bookings from Supabase on component mount
   useEffect(() => {
-    const storedBookings = localStorage.getItem('boatBookings');
-    if (storedBookings) {
+    async function fetchBookings() {
       try {
-        const parsedBookings = JSON.parse(storedBookings).map((booking: any) => ({
+        setIsLoading(true);
+        // Fetch bookings from Supabase
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*');
+        
+        if (error) throw error;
+        
+        // Convert the dates to Date objects
+        const parsedBookings = data.map((booking: { start: string | number | Date; end: string | number | Date; }) => ({
           ...booking,
           start: new Date(booking.start),
           end: new Date(booking.end)
         }));
+        
         setBookings(parsedBookings);
-      } catch (error) {
-        console.error("Error parsing stored bookings:", error);
+      } catch (err) {
+        console.error("Error fetching bookings:", err);
+        setError("Failed to load bookings. Please try refreshing the page.");
+      } finally {
+        setIsLoading(false);
       }
     }
-  }, []);
-  
-  // Save bookings to localStorage whenever they change
-  useEffect(() => {
-    if (bookings.length > 0) {
-      localStorage.setItem('boatBookings', JSON.stringify(bookings));
+    
+    if (isAuthenticated) {
+      fetchBookings();
     }
-  }, [bookings]);
+  }, [isAuthenticated]);
   
-  const handleBookingSave = (newBooking: Booking): void => {
-    setBookings([...bookings, newBooking]);
+  // Realtime subscription for bookings
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    // Subscribe to changes in the bookings table
+    const subscription = supabase
+      .channel('bookings_channel')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'bookings' 
+        }, 
+        async (payload: any) => {
+          // Refresh all bookings when a change occurs
+          const { data, error } = await supabase
+            .from('bookings')
+            .select('*');
+          
+          if (error) {
+            console.error("Error fetching updated bookings:", error);
+            return;
+          }
+          
+          // Convert the dates to Date objects
+          const parsedBookings : any = data.map((booking: { start: string | number | Date; end: string | number | Date; }) => ({
+            ...booking,
+            start: new Date(booking.start),
+            end: new Date(booking.end)
+          }));
+          
+          setBookings(parsedBookings);
+        }
+      )
+      .subscribe();
+    
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [isAuthenticated]);
+  
+  const handleBookingSave = async (newBooking: Booking): Promise<void> => {
+    try {
+      // Insert the booking into Supabase
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([
+          {
+            id: newBooking.id,
+            title: newBooking.title,
+            start: newBooking.start.toISOString(),
+            end: newBooking.end.toISOString(),
+            userId: newBooking.userId,
+            userName: newBooking.userName,
+            color: newBooking.color
+          }
+        ])
+        .select();
+      
+      if (error) throw error;
+      
+      // Update local state (this will be redundant if the subscription is working,
+      // but it provides immediate feedback)
+      setBookings([...bookings, newBooking]);
+    } catch (err) {
+      console.error("Error saving booking:", err);
+      throw err;
+    }
   };
   
-  const handleDeleteBooking = (bookingId: string): void => {
-    const updatedBookings = bookings.filter(booking => booking.id !== bookingId);
-    setBookings(updatedBookings);
-    
-    // Update localStorage
-    if (updatedBookings.length > 0) {
-      localStorage.setItem('boatBookings', JSON.stringify(updatedBookings));
-    } else {
-      localStorage.removeItem('boatBookings');
+  const handleDeleteBooking = async (bookingId: string): Promise<void> => {
+    try {
+      // Delete the booking from Supabase
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId);
+      
+      if (error) throw error;
+      
+      // Update local state (this will be redundant if the subscription is working,
+      // but it provides immediate feedback)
+      const updatedBookings = bookings.filter(booking => booking.id !== bookingId);
+      setBookings(updatedBookings);
+    } catch (err) {
+      console.error("Error deleting booking:", err);
+      throw err;
     }
   };
   
@@ -697,36 +822,61 @@ const BoatBookingApp: React.FC = () => {
       
       {/* Main content with statistics and calendar */}
       <main className="container p-4 mx-auto my-8 bg-white rounded-lg shadow-lg">
-        {/* Stats Section - New addition */}
-        <BookingStats bookings={bookings} />
-        
-        <div className="flex items-center mb-4">
-          <h2 className="text-xl font-semibold">Booking Calendar</h2>
-          <div className="flex-grow"></div>
-          {/* Legend */}
-          <div className="flex items-center space-x-4">
-            {USERS.map(user => (
-              <div key={user.id} className="flex items-center">
-                <div className="w-4 h-4 mr-1 rounded-full" style={{ backgroundColor: user.color }}></div>
-                <span className="text-sm">{user.name}</span>
-              </div>
-            ))}
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <svg className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="text-gray-600">Loading bookings...</p>
+            </div>
           </div>
-        </div>
-        
-        {/* Calendar component */}
-        <div className="max-h-[600px]">
-          <SimpleCalendar 
-            bookings={bookings} 
-            onDeleteBooking={handleDeleteBooking}
-          />
-        </div>
+        ) : error ? (
+          <div className="p-4 text-red-700 bg-red-100 rounded-md mb-8">
+            <p>{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+            >
+              Refresh
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Stats Section */}
+            <BookingStats bookings={bookings} />
+            
+            <div className="flex items-center mb-4">
+              <h2 className="text-xl font-semibold">Booking Calendar</h2>
+              <div className="flex-grow"></div>
+              {/* Legend */}
+              <div className="flex items-center space-x-4">
+                {USERS.map(user => (
+                  <div key={user.id} className="flex items-center">
+                    <div className="w-4 h-4 mr-1 rounded-full" style={{ backgroundColor: user.color }}></div>
+                    <span className="text-sm">{user.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Calendar component */}
+            <div className="text-black max-h-[600px]">
+              <SimpleCalendar 
+                bookings={bookings} 
+                onDeleteBooking={handleDeleteBooking}
+              />
+            </div>
+          </>
+        )}
       </main>
       
       {/* Floating action button */}
       <button
         className="fixed p-4 text-white bg-blue-600 rounded-full shadow-lg bottom-8 right-8 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         onClick={() => setShowBookingForm(true)}
+        disabled={isLoading}
       >
         <PlusCircle size={24} />
       </button>
@@ -745,7 +895,7 @@ const BoatBookingApp: React.FC = () => {
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen text-black">
       <BoatBookingApp />
     </div>
   );
